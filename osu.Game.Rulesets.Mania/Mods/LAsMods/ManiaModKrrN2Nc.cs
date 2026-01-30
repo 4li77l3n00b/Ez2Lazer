@@ -98,4 +98,15 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
 
         public int ApplyOrder => ApplyOrderSetting.Value ?? 1000;
     }
+
+    public class KrrOptions
+    {
+        public int TargetKeys { get; set; } = 8;
+        public int MaxKeys { get; set; } = 10;
+        public int MinKeys { get; set; } = 4;
+
+        // 新增：转换速度索引，对应 BeatSpeedValues 数组
+        public int BeatSpeed { get; set; } = 4;
+        public int? Seed { get; set; }
+    }
 }
