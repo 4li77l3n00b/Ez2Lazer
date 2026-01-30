@@ -1,12 +1,11 @@
-// Licensed under the MIT Licence.
-using System;
-using System.Collections.Generic;
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
 using osu.Framework.Bindables;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Rulesets.Mania.Beatmaps;
-using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Rulesets.Mania.Mods.LAsMods
@@ -28,17 +27,25 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
         public override bool ValidForMultiplayer => true;
 
         [SettingSource("Target Keys", "目标键数（用于修改列数）")]
-        public BindableInt TargetKeys { get; } = new BindableInt(8)
+        public BindableNumber<int> TargetKeys { get; } = new BindableInt(8)
         {
             MinValue = 1,
             MaxValue = 18,
         };
 
         [SettingSource("Max Keys", "Density max (stub)")]
-        public BindableInt MaxKeys { get; } = new BindableInt(18) { MinValue = 1, MaxValue = 18 };
+        public BindableNumber<int> MaxKeys { get; } = new BindableInt(18)
+        {
+            MinValue = 1,
+            MaxValue = 18
+        };
 
         [SettingSource("Min Keys", "Density min (stub)")]
-        public BindableInt MinKeys { get; } = new BindableInt(1) { MinValue = 1, MaxValue = 18 };
+        public BindableNumber<int> MinKeys { get; } = new BindableInt(1)
+        {
+            MinValue = 1,
+            MaxValue = 18
+        };
 
         public void ApplyToBeatmapConverter(IBeatmapConverter converter)
         {

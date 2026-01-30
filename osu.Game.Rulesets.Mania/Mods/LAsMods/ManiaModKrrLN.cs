@@ -1,12 +1,12 @@
-// Licensed under the MIT Licence.
-using System;
-using System.Collections.Generic;
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
 using osu.Framework.Bindables;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Rulesets.Mania.Beatmaps;
-using osu.Game.Rulesets.Mania.Objects;
+using osu.Game.Rulesets.Mania.Mods.KrrConversion;
 using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Rulesets.Mania.Mods.LAsMods
@@ -28,7 +28,7 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
         public override bool ValidForMultiplayer => true;
 
         [SettingSource("Level", "Transform level (stub)")]
-        public BindableInt Level { get; } = new BindableInt(3)
+        public BindableNumber<int> Level { get; } = new BindableInt(3)
         {
             MinValue = -3,
             MaxValue = 10,
@@ -43,7 +43,7 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
 
             // call into helper converter (minimal ported behavior)
             var options = new KrrLNOptions { Level = Level.Value, Seed = Seed.Value };
-            KrrConverters.KRRLNConverter.Transform(maniaBeatmap, options);
+            KrrLNConverter.Transform(maniaBeatmap, options);
         }
     }
 
