@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Bindables;
@@ -15,11 +16,11 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
 {
     public class ManiaModKrrDP : Mod, IApplicableToBeatmapConverter, IApplicableAfterBeatmapConversion
     {
-        public override string Name => "DP";
+        public override string Name => "Krr DP";
 
         public override string Acronym => "DP";
 
-        public override LocalisableString Description => "Convert to Dual Play mode";
+        public override LocalisableString Description => "[KrrTool] Convert to Dual Play mode";
 
         public override double ScoreMultiplier => 1;
 
@@ -97,22 +98,22 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
         {
             var maniaBeatmap = (ManiaBeatmap)beatmap;
 
-            int totalKeys = maniaBeatmap.TotalColumns; // already doubled by converter
+            int totalKeys = maniaBeatmap.TotalColumns;
             int originalKeys = totalKeys / 2;
 
-            var rng = new System.Random();
+            var rng = new Random();
 
             var newObjects = new List<ManiaHitObject>();
 
             foreach (var hitObject in maniaBeatmap.HitObjects)
             {
-                // Since converter mapped column * 2, original column = hitObject.Column / 2
                 int originalColumn = hitObject.Column / 2;
 
                 // Left side
                 if (!LRemove.Value)
                 {
                     int leftCol = LMirror.Value ? originalKeys - 1 - originalColumn : originalColumn;
+
                     if (EnableModifyKeys.Value)
                     {
                         leftCol = rng.Next(ModifyKeys.Value);
@@ -122,18 +123,21 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
                         // Simple density adjustment
                         leftCol = rng.Next(LMinKeys.Value, LMaxKeys.Value + 1);
                     }
-                    ManiaHitObject leftObject = hitObject is HoldNote hold ? new HoldNote
-                    {
-                        StartTime = hold.StartTime,
-                        EndTime = hold.EndTime,
-                        Column = leftCol,
-                        Samples = hold.Samples.ToList()
-                    } : new Note
-                    {
-                        StartTime = hitObject.StartTime,
-                        Column = leftCol,
-                        Samples = hitObject.Samples.ToList()
-                    };
+
+                    ManiaHitObject leftObject = hitObject is HoldNote hold
+                        ? new HoldNote
+                        {
+                            StartTime = hold.StartTime,
+                            EndTime = hold.EndTime,
+                            Column = leftCol,
+                            Samples = hold.Samples.ToList()
+                        }
+                        : new Note
+                        {
+                            StartTime = hitObject.StartTime,
+                            Column = leftCol,
+                            Samples = hitObject.Samples.ToList()
+                        };
                     newObjects.Add(leftObject);
                 }
 
@@ -141,6 +145,7 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
                 if (!RRemove.Value)
                 {
                     int rightCol = RMirror.Value ? originalKeys - 1 - originalColumn : originalColumn;
+
                     if (EnableModifyKeys.Value)
                     {
                         rightCol = ModifyKeys.Value + rng.Next(ModifyKeys.Value);
@@ -153,27 +158,27 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
                     {
                         rightCol += originalKeys;
                     }
-                    ManiaHitObject rightObject = hitObject is HoldNote hold2 ? new HoldNote
-                    {
-                        StartTime = hold2.StartTime,
-                        EndTime = hold2.EndTime,
-                        Column = rightCol,
-                        Samples = hold2.Samples.ToList()
-                    } : new Note
-                    {
-                        StartTime = hitObject.StartTime,
-                        Column = rightCol,
-                        Samples = hitObject.Samples.ToList()
-                    };
+
+                    ManiaHitObject rightObject = hitObject is HoldNote hold2
+                        ? new HoldNote
+                        {
+                            StartTime = hold2.StartTime,
+                            EndTime = hold2.EndTime,
+                            Column = rightCol,
+                            Samples = hold2.Samples.ToList()
+                        }
+                        : new Note
+                        {
+                            StartTime = hitObject.StartTime,
+                            Column = rightCol,
+                            Samples = hitObject.Samples.ToList()
+                        };
                     newObjects.Add(rightObject);
                 }
             }
 
             maniaBeatmap.HitObjects.Clear();
             maniaBeatmap.HitObjects.AddRange(newObjects.OrderBy(h => h.StartTime).ThenBy(h => h.Column));
-
-            // metadata handling intentionally omitted per request (do not modify metadata here)
         }
-        // Note: metadata modification methods removed — framework will handle metadata/setting UI.
     }
 }

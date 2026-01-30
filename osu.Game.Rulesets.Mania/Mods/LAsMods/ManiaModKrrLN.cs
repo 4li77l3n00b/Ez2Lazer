@@ -13,11 +13,11 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
 {
     public class ManiaModKrrLN : Mod, IApplicableAfterBeatmapConversion
     {
-        public override string Name => "KRRLN";
+        public override string Name => "Krr LN";
 
-        public override string Acronym => "KL";
+        public override string Acronym => "LN";
 
-        public override LocalisableString Description => "KRRLN long-note transformer (port stub).";
+        public override LocalisableString Description => "[KrrTool] long-note transformer (port stub).";
 
         public override double ScoreMultiplier => 1;
 

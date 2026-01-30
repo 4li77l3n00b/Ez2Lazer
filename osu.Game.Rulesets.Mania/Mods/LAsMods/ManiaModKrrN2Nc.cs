@@ -11,13 +11,13 @@ using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Rulesets.Mania.Mods.LAsMods
 {
-    public class ManiaModN2NC : Mod, IApplicableToBeatmapConverter, IApplicableAfterBeatmapConversion
+    public class ManiaModKrrN2Nc : Mod, IApplicableToBeatmapConverter, IApplicableAfterBeatmapConversion
     {
-        public override string Name => "N2NC";
+        public override string Name => "Krr N2Nc";
 
         public override string Acronym => "N2N";
 
-        public override LocalisableString Description => "N2NC keycount conversion (port stub).";
+        public override LocalisableString Description => "[KrrTool] KeyCounts conversion (port stub).";
 
         public override double ScoreMultiplier => 1;
 
