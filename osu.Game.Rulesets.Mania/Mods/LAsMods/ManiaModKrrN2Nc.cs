@@ -53,6 +53,13 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
             MaxValue = 18
         };
 
+        [SettingSource("Transform Speed", "转换速度（影响节拍区间）")]
+        public BindableInt TransformSpeed { get; } = new BindableInt(4)
+        {
+            MinValue = 0,
+            MaxValue = 8
+        };
+
         [SettingSource(typeof(EzModStrings), nameof(EzModStrings.Seed_Label), nameof(EzModStrings.Seed_Description), SettingControlType = typeof(SettingsNumberBox))]
         public Bindable<int?> Seed { get; } = new Bindable<int?>(114514);
 
@@ -68,6 +75,7 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
                 TargetKeys = TargetKeys.Value,
                 MaxKeys    = MaxKeys.Value,
                 MinKeys    = MinKeys.Value,
+                TransformSpeed = TransformSpeed.Value,
                 Seed       = Seed.Value
             };
 

@@ -15,143 +15,125 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
             int targetKeys = options?.TargetKeys ?? beatmap.TotalColumns;
             int maxKeys    = options?.MaxKeys    ?? targetKeys;
             int minKeys    = options?.MinKeys    ?? 1;
+            int speedIndex = options?.TransformSpeed ?? 4;
             int seedValue  = options?.Seed       ?? KrrConversionHelper.ComputeSeedFromBeatmap(beatmap);
 
-            // 推断原始键数
             int originalKeys = KrrConversionHelper.InferOriginalKeys(beatmap, targetKeys);
             if (originalKeys == targetKeys) return;
 
             var rng = new Random(seedValue);
             var osc = new Oscillator(seedValue);
 
-            // 1. 列映射
-            var mapped = MapColumns(beatmap.HitObjects, originalKeys, targetKeys, osc);
+            // 计算转换时间窗口
+            double convertTime = KrrConversionHelper.ComputeConvertTime(speedIndex, beatmap.BeatmapInfo.BPM);
 
-            // 2. 构建桶
-            var buckets = BuildBuckets(mapped, targetKeys);
+            // 1. 按时间区间切分
+            var segmentedObjects = ApplyTimeSegmentation(beatmap.HitObjects, targetKeys, convertTime, rng);
 
-            // 3. 填补空桶
-            FillEmptyBuckets(buckets, beatmap.HitObjects.ToList(), originalKeys, targetKeys, rng);
+            // 2. 冲突检测与删除
+            var conflictResolved = ResolveConflicts(segmentedObjects, convertTime);
+
+            // 3. 空行补充
+            var filledObjects = FillEmptyRows(conflictResolved, targetKeys, rng);
 
             // 4. 密度控制
-            var finalObjects = AdjustBuckets(buckets, beatmap.HitObjects.Count, originalKeys, targetKeys, minKeys, maxKeys, rng);
+            var finalObjects = AdjustDensity(filledObjects, targetKeys, minKeys, maxKeys, rng);
 
-            // 5. 更新谱面对象
+            // 更新谱面对象
             beatmap.HitObjects.Clear();
             beatmap.HitObjects.AddRange(finalObjects.OrderBy(h => h.StartTime).ThenBy(h => h.Column));
 
-            // 6. 最后更新谱面总列数，避免越界
-            try
-            {
-                beatmap.Stages.Clear();
-                beatmap.Stages.Add(new StageDefinition(targetKeys));
-                beatmap.Difficulty.CircleSize = targetKeys;
-                Logger.Log($"[N2NcConverter] Updated beatmap stages and Difficulty.CircleSize to {targetKeys}");
-            }
-            catch (Exception ex)
-            {
-                Logger.Log($"[N2NcConverter] Failed to update stages: {ex.Message}");
-            }
+            // 更新谱面总列数
+            beatmap.Stages.Clear();
+            beatmap.Stages.Add(new StageDefinition(targetKeys));
+            beatmap.Difficulty.CircleSize = targetKeys;
         }
 
-        public static List<(ManiaHitObject obj, int newCol)> MapColumns(IEnumerable<ManiaHitObject> objects, int originalKeys, int targetKeys, Oscillator osc)
+        public static List<ManiaHitObject> ApplyTimeSegmentation(List<ManiaHitObject> objects, int targetKeys, double convertTime, Random rng)
         {
-            var mapped = new List<(ManiaHitObject, int)>();
+            var result = new List<ManiaHitObject>();
+            var grouped = objects.GroupBy(o => (int)(o.StartTime / convertTime));
 
-            foreach (var obj in objects)
+            foreach (var segment in grouped)
             {
-                int origCol = Math.Clamp(obj.Column, 0, originalKeys - 1);
-                double proportion = originalKeys > 1 ? origCol / (double)(originalKeys - 1) : 0.0;
-                double exact = proportion * (targetKeys - 1);
-                int floor = (int)Math.Floor(exact);
-                double frac = exact - floor;
-                int newCol = floor;
-
-                if (frac > 0.5) newCol = floor + 1;
-                else if (Math.Abs(frac - 0.5) <= 1e-9 && osc.Next() > 0.5)
-                    newCol = floor + 1;
-
-                newCol = Math.Clamp(newCol, 0, targetKeys - 1);
-                mapped.Add((obj, newCol));
-            }
-
-            return mapped;
-        }
-
-        public static Dictionary<int, List<ManiaHitObject>> BuildBuckets(List<(ManiaHitObject obj, int newCol)> mapped, int targetKeys)
-        {
-            var buckets = new Dictionary<int, List<ManiaHitObject>>();
-            for (int i = 0; i < targetKeys; i++) buckets[i] = new List<ManiaHitObject>();
-
-            foreach (var kv in mapped)
-                buckets[kv.newCol].Add(kv.obj);
-
-            return buckets;
-        }
-
-        public static void FillEmptyBuckets(Dictionary<int, List<ManiaHitObject>> buckets, List<ManiaHitObject> sourceObjects, int originalKeys, int targetKeys, Random rng)
-        {
-            if (targetKeys <= originalKeys) return;
-
-            for (int t = 0; t < targetKeys; t++)
-            {
-                if (buckets[t].Count == 0)
+                foreach (var obj in segment)
                 {
-                    int approxSource = (int)Math.Round(t * (originalKeys - 1) / (double)(targetKeys - 1));
-                    approxSource = Math.Clamp(approxSource, 0, originalKeys - 1);
-
-                    var candidates = sourceObjects.Where(h => h.Column == approxSource).ToList();
-
-                    if (candidates.Count > 0)
-                    {
-                        var pick = candidates[rng.Next(candidates.Count)];
-                        buckets[t].Add(KrrConversionHelper.CloneObjectToColumn(pick, t));
-                    }
+                    int newCol = rng.Next(0, targetKeys);
+                    var clone = KrrConversionHelper.CloneObjectToColumn(obj, newCol);
+                    result.Add(clone);
                 }
             }
+
+            return result.OrderBy(o => o.StartTime).ToList();
         }
 
-        public static List<ManiaHitObject> AdjustBuckets(Dictionary<int, List<ManiaHitObject>> buckets, int totalObjects, int originalKeys, int targetKeys, int minKeys, int maxKeys, Random rng)
+        public static List<ManiaHitObject> ResolveConflicts(List<ManiaHitObject> objects, double convertTime)
         {
-            var finalObjects = new List<ManiaHitObject>();
-            int globalMax = Math.Max(1, maxKeys);
-            int globalMin = Math.Max(0, minKeys);
+            var result = new List<ManiaHitObject>();
+            var grouped = objects.GroupBy(o => (int)(o.StartTime / convertTime));
 
-            foreach (var kv in buckets)
+            foreach (var segment in grouped)
             {
-                var list = kv.Value.OrderBy(h => h.StartTime).ToList();
-                int expectedPerBucket = (int)Math.Ceiling(totalObjects / (double)targetKeys);
+                var byColumn = segment.GroupBy(o => o.Column);
 
-                // 压缩过多
-                if (originalKeys > targetKeys && list.Count > expectedPerBucket * 2)
-                    list = list.OrderBy(x => rng.Next()).Take(expectedPerBucket).OrderBy(x => x.StartTime).ToList();
+                foreach (var colGroup in byColumn)
+                {
+                    // 如果同一时间段同一列有多个音符，保留一个
+                    result.Add(colGroup.First());
+                }
+            }
 
-                // 超过最大值
-                if (list.Count > globalMax)
-                    list = list.OrderBy(x => rng.Next()).Take(globalMax).OrderBy(x => x.StartTime).ToList();
+            return result.OrderBy(o => o.StartTime).ToList();
+        }
 
-                // 少于最小值
-                else if (list.Count < globalMin && list.Count > 0)
+        public static List<ManiaHitObject> FillEmptyRows(List<ManiaHitObject> objects, int targetKeys, Random rng)
+        {
+            var result = new List<ManiaHitObject>(objects);
+            var grouped = objects.GroupBy(o => o.StartTime);
+
+            foreach (var group in grouped)
+            {
+                if (!group.Any())
+                {
+                    // 插入一个随机音符
+                    var note = new Note
+                    {
+                        Column = rng.Next(0, targetKeys),
+                        StartTime = group.Key
+                    };
+                    result.Add(note);
+                }
+            }
+
+            return result.OrderBy(o => o.StartTime).ToList();
+        }
+
+        public static List<ManiaHitObject> AdjustDensity(List<ManiaHitObject> objects, int targetKeys, int minKeys, int maxKeys, Random rng)
+        {
+            var result = new List<ManiaHitObject>();
+            var grouped = objects.GroupBy(o => o.StartTime);
+
+            foreach (var group in grouped)
+            {
+                var list = group.ToList();
+
+                if (list.Count > maxKeys)
+                    list = list.OrderBy(x => rng.Next()).Take(maxKeys).ToList();
+                else if (list.Count < minKeys && list.Count > 0)
                 {
                     int idx = 0;
 
-                    while (list.Count < globalMin)
+                    while (list.Count < minKeys)
                     {
-                        list.Add(KrrConversionHelper.CloneObjectToColumn(list[idx % list.Count], kv.Key));
+                        list.Add(KrrConversionHelper.CloneObjectToColumn(list[idx % list.Count], rng.Next(0, targetKeys)));
                         idx++;
                     }
-
-                    list = list.OrderBy(x => x.StartTime).ToList();
                 }
 
-                foreach (var h in list)
-                {
-                    h.Column = kv.Key;
-                    finalObjects.Add(h);
-                }
+                result.AddRange(list);
             }
 
-            return finalObjects;
+            return result.OrderBy(o => o.StartTime).ToList();
         }
     }
 }

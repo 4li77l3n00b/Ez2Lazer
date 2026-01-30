@@ -10,6 +10,15 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
 {
     public class KrrConversionHelper
     {
+        public static readonly double[] TransformSpeedValues =
+            { 0.125, 0.25, 0.5, 0.75, 1, 2, 3, 4, 999 };
+
+        public static double ComputeConvertTime(int transformSpeedIndex, double bpm)
+        {
+            double speed = TransformSpeedValues[Math.Clamp(transformSpeedIndex, 0, TransformSpeedValues.Length - 1)];
+            return Math.Max(1, (speed * 60000 / bpm * 4) - 10);
+        }
+
         public static int ComputeSeedFromBeatmap(ManiaBeatmap beatmap)
         {
             try
@@ -62,6 +71,9 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
         public int TargetKeys { get; set; } = 8;
         public int MaxKeys { get; set; } = 10;
         public int MinKeys { get; set; } = 4;
+
+        // 新增：转换速度索引，对应 TransformSpeedValues 数组
+        public int TransformSpeed { get; set; } = 4;
         public int? Seed { get; set; }
     }
 }
