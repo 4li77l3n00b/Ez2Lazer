@@ -15,7 +15,7 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
             int targetKeys = options?.TargetKeys ?? beatmap.TotalColumns;
             int maxKeys    = options?.MaxKeys    ?? targetKeys;
             int minKeys    = options?.MinKeys    ?? 1;
-            int speedIndex = options?.TransformSpeed ?? 4;
+            int speedIndex = options?.BeatSpeed ?? 4;
             int seedValue  = options?.Seed       ?? KrrConversionHelper.ComputeSeedFromBeatmap(beatmap);
 
             int originalKeys = KrrConversionHelper.InferOriginalKeys(beatmap, targetKeys);

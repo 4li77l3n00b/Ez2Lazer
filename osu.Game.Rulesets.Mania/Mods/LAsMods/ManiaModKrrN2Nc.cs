@@ -53,8 +53,9 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
             MaxValue = 18
         };
 
-        [SettingSource("Transform Speed", "转换速度（影响节拍区间）")]
-        public BindableInt TransformSpeed { get; } = new BindableInt(4)
+        // TransformSpeed 设置项，限定在 0–8，对应预设表
+        [SettingSource(typeof(EzManiaModStrings), nameof(EzManiaModStrings.BeatSpeed_Label), nameof(EzManiaModStrings.BeatSpeed_Description), SettingControlType = typeof(MultiplierSettingsSlider))]
+        public BindableInt BeatSpeed { get; } = new BindableInt(4)
         {
             MinValue = 0,
             MaxValue = 8
@@ -75,7 +76,7 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
                 TargetKeys = TargetKeys.Value,
                 MaxKeys    = MaxKeys.Value,
                 MinKeys    = MinKeys.Value,
-                TransformSpeed = TransformSpeed.Value,
+                BeatSpeed = BeatSpeed.Value,
                 Seed       = Seed.Value
             };
 
