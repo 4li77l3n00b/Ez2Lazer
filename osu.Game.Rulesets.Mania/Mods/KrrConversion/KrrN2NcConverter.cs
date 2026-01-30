@@ -59,7 +59,7 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
                 foreach (var obj in segment)
                 {
                     int newCol = rng.Next(0, targetKeys);
-                    var clone = KrrConversionHelper.CloneObjectToColumn(obj, newCol);
+                    var clone = KrrConversionHelper.CloneWithColumn(obj, newCol);
                     result.Add(clone);
                 }
             }
@@ -125,7 +125,7 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
 
                     while (list.Count < minKeys)
                     {
-                        list.Add(KrrConversionHelper.CloneObjectToColumn(list[idx % list.Count], rng.Next(0, targetKeys)));
+                        list.Add(KrrConversionHelper.CloneWithColumn(list[idx % list.Count], rng.Next(0, targetKeys)));
                         idx++;
                     }
                 }

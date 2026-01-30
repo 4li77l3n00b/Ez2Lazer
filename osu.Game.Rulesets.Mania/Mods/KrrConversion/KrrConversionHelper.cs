@@ -43,24 +43,24 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
             return fallback;
         }
 
-        public static ManiaHitObject CloneObjectToColumn(ManiaHitObject src, int targetCol)
+        public static ManiaHitObject CloneWithColumn(ManiaHitObject src, int col)
         {
-            if (src is HoldNote hn)
+            if (src is HoldNote hold)
             {
                 return new HoldNote
                 {
-                    Column = targetCol,
-                    StartTime = hn.StartTime,
-                    EndTime = hn.EndTime,
-                    Samples = hn.Samples?.ToList()
+                    StartTime = hold.StartTime,
+                    EndTime = hold.EndTime,
+                    Column = col,
+                    Samples = hold.Samples.ToList()
                 };
             }
 
             return new Note
             {
-                Column = targetCol,
                 StartTime = src.StartTime,
-                Samples = src.Samples
+                Column = col,
+                Samples = src.Samples.ToList()
             };
         }
     }

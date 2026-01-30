@@ -1,6 +1,3 @@
-// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
-// See the LICENCE file in the repository root for full licence text.
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,25 +8,19 @@ using osu.Game.Configuration;
 using osu.Game.Rulesets.Mania.Beatmaps;
 using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Mania.Mods.KrrConversion;
 
 namespace osu.Game.Rulesets.Mania.Mods.LAsMods
 {
-    public class ManiaModKrrDP : Mod, IApplicableToBeatmapConverter, IApplicableAfterBeatmapConversion
+    public class ManiaModKrrDP : Mod, IApplicableAfterBeatmapConversion
     {
         public override string Name => "Krr DP";
-
         public override string Acronym => "DP";
-
         public override LocalisableString Description => "[KrrTool] Convert to Dual Play mode";
-
         public override double ScoreMultiplier => 1;
-
-        public override ModType Type => ModType.LA_Mod;
-
+        public override ModType Type => ModType.Conversion;
         public override bool Ranked => false;
-
         public override bool ValidForMultiplayer => true;
-
         public override bool ValidForFreestyleAsRequiredMod => false;
 
         [SettingSource("Enable Modify Keys", "Enable key modification")]
@@ -52,14 +43,14 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
         public BindableBool LRemove { get; set; } = new BindableBool(false);
 
         [SettingSource("Left Max Keys", "Max keys for left density")]
-        public BindableNumber<int> LMaxKeys { get; set; } = new BindableInt(5)
+        public BindableInt LMaxKeys { get; set; } = new BindableInt(5)
         {
             MinValue = 1,
             MaxValue = 9,
         };
 
         [SettingSource("Left Min Keys", "Min keys for left density")]
-        public BindableNumber<int> LMinKeys { get; set; } = new BindableInt(1)
+        public BindableInt LMinKeys { get; set; } = new BindableInt(1)
         {
             MinValue = 1,
             MaxValue = 9,
@@ -75,110 +66,82 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
         public BindableBool RRemove { get; set; } = new BindableBool(false);
 
         [SettingSource("Right Max Keys", "Max keys for right density")]
-        public BindableNumber<int> RMaxKeys { get; set; } = new BindableInt(5)
+        public BindableInt RMaxKeys { get; set; } = new BindableInt(5)
         {
             MinValue = 1,
             MaxValue = 9,
         };
 
         [SettingSource("Right Min Keys", "Min keys for right density")]
-        public BindableNumber<int> RMinKeys { get; set; } = new BindableInt(1)
+        public BindableInt RMinKeys { get; set; } = new BindableInt(1)
         {
             MinValue = 1,
             MaxValue = 9,
         };
 
-        public void ApplyToBeatmapConverter(IBeatmapConverter converter)
-        {
-            var mbc = (ManiaBeatmapConverter)converter;
-            mbc.TargetColumns = mbc.TotalColumns * 2;
-        }
-
         public void ApplyToBeatmap(IBeatmap beatmap)
         {
             var maniaBeatmap = (ManiaBeatmap)beatmap;
-
-            int totalKeys = maniaBeatmap.TotalColumns;
-            int originalKeys = totalKeys / 2;
-
+            int originalKeys = maniaBeatmap.TotalColumns;
             var rng = new Random();
 
             var newObjects = new List<ManiaHitObject>();
 
             foreach (var hitObject in maniaBeatmap.HitObjects)
             {
-                int originalColumn = hitObject.Column / 2;
+                int originalColumn = hitObject.Column;
 
-                // Left side
+                // 左侧处理
                 if (!LRemove.Value)
                 {
-                    int leftCol = LMirror.Value ? originalKeys - 1 - originalColumn : originalColumn;
+                    int leftCol = LMirror.Value ? (originalKeys - 1 - originalColumn) : originalColumn;
 
                     if (EnableModifyKeys.Value)
-                    {
                         leftCol = rng.Next(ModifyKeys.Value);
-                    }
-                    else if (LDensity.Value)
-                    {
-                        // Simple density adjustment
-                        leftCol = rng.Next(LMinKeys.Value, LMaxKeys.Value + 1);
-                    }
 
-                    ManiaHitObject leftObject = hitObject is HoldNote hold
-                        ? new HoldNote
-                        {
-                            StartTime = hold.StartTime,
-                            EndTime = hold.EndTime,
-                            Column = leftCol,
-                            Samples = hold.Samples.ToList()
-                        }
-                        : new Note
-                        {
-                            StartTime = hitObject.StartTime,
-                            Column = leftCol,
-                            Samples = hitObject.Samples.ToList()
-                        };
+                    var leftObject = KrrConversionHelper.CloneWithColumn(hitObject, leftCol);
                     newObjects.Add(leftObject);
                 }
 
-                // Right side
+                // 右侧处理
                 if (!RRemove.Value)
                 {
-                    int rightCol = RMirror.Value ? originalKeys - 1 - originalColumn : originalColumn;
+                    int rightCol = RMirror.Value ? (originalKeys - 1 - originalColumn) : originalColumn;
 
                     if (EnableModifyKeys.Value)
-                    {
                         rightCol = ModifyKeys.Value + rng.Next(ModifyKeys.Value);
-                    }
-                    else if (RDensity.Value)
-                    {
-                        rightCol = originalKeys + rng.Next(RMinKeys.Value, RMaxKeys.Value + 1);
-                    }
                     else
-                    {
                         rightCol += originalKeys;
-                    }
 
-                    ManiaHitObject rightObject = hitObject is HoldNote hold2
-                        ? new HoldNote
-                        {
-                            StartTime = hold2.StartTime,
-                            EndTime = hold2.EndTime,
-                            Column = rightCol,
-                            Samples = hold2.Samples.ToList()
-                        }
-                        : new Note
-                        {
-                            StartTime = hitObject.StartTime,
-                            Column = rightCol,
-                            Samples = hitObject.Samples.ToList()
-                        };
+                    var rightObject = KrrConversionHelper.CloneWithColumn(hitObject, rightCol);
                     newObjects.Add(rightObject);
                 }
             }
 
-            maniaBeatmap.HitObjects.Clear();
-            maniaBeatmap.HitObjects.AddRange(newObjects.OrderBy(h => h.StartTime).ThenBy(h => h.Column));
+            // 如果开启密度控制，调用 N2NC 转换器来处理左右半区
+            if (LDensity.Value || RDensity.Value)
+            {
+                var options = new KrrOptions
+                {
+                    TargetKeys = originalKeys * 2,
+                    MaxKeys = LDensity.Value ? LMaxKeys.Value : RMaxKeys.Value,
+                    MinKeys = LDensity.Value ? LMinKeys.Value : RMinKeys.Value,
+                    Seed = rng.Next()
+                };
+
+                KrrN2NcConverter.Transform(maniaBeatmap, options);
+            }
+            else
+            {
+                maniaBeatmap.HitObjects.Clear();
+                maniaBeatmap.HitObjects.AddRange(newObjects.OrderBy(h => h.StartTime).ThenBy(h => h.Column));
+            }
+
+            // 最后更新总列数
+            int finalKeys = originalKeys * 2;
+            maniaBeatmap.Stages.Clear();
+            maniaBeatmap.Stages.Add(new StageDefinition(finalKeys));
+            maniaBeatmap.Difficulty.CircleSize = finalKeys;
         }
     }
 }

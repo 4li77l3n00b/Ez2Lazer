@@ -52,7 +52,7 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
         public int Level { get; set; }
         public int? Seed { get; set; }
 
-        // Additional options approximating krrTools' options with sensible defaults
+        // Additional options approximating krrTools options with sensible defaults
         public bool ProcessOriginalIsChecked { get; set; } = false;
         public int LengthThreshold { get; set; } = 4;
         public double LongPercentage { get; set; } = 100;
