@@ -45,9 +45,9 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
             int pLevel = options.Level;
             int pSeed = options.Seed ?? 114514;
 
-            int seedValue = options.Seed ?? ComputeSeedFromBeatmap(beatmap);
+            int seedValue = options.Seed ?? KrrConversionHelper.ComputeSeedFromBeatmap(beatmap);
             var rg = new Random(seedValue);
-            var osc = new OscillatorGenerator(seedValue, 1.0 / 16.0);
+            var osc = new Oscillator(seedValue, 1.0 / 16.0);
 
             int cs = Math.Max(1, beatmap.TotalColumns);
 
@@ -228,7 +228,7 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
             // metadata handling intentionally omitted (framework will manage metadata/setting UI)
         }
 
-        public static int GenerateRandom(double dBar, double uBar, double mBar, int pBar, Random r, OscillatorGenerator? osc)
+        public static int GenerateRandom(double dBar, double uBar, double mBar, int pBar, Random r, Oscillator? osc)
         {
             if (pBar <= 0) return (int)mBar;
 
@@ -267,7 +267,7 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
             return rounded;
         }
 
-        public static List<(int index, double start, int length)> MarkByPercentagePerGroup(List<(int index, double start, int length)> list, double percentage, Random r, OscillatorGenerator osc)
+        public static List<(int index, double start, int length)> MarkByPercentagePerGroup(List<(int index, double start, int length)> list, double percentage, Random r, Oscillator osc)
         {
             if (percentage >= 100) return list;
             if (percentage <= 0) return new List<(int, double, int)>();
@@ -311,19 +311,6 @@ namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
                 int aligned = (int)(Math.Round(item.length / denom) * denom);
                 if (aligned < 30) aligned = item.length; // keep if too small after rounding
                 list[i] = (item.index, item.start, aligned);
-            }
-        }
-
-        public static int ComputeSeedFromBeatmap(ManiaBeatmap beatmap)
-        {
-            try
-            {
-                int val = (beatmap.HitObjects.Count) ^ (beatmap.TotalColumns);
-                return Math.Abs(val) + 1;
-            }
-            catch
-            {
-                return 114514;
             }
         }
     }

@@ -2,47 +2,66 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Linq;
+using osu.Game.Rulesets.Mania.Beatmaps;
+using osu.Game.Rulesets.Mania.Objects;
 
 namespace osu.Game.Rulesets.Mania.Mods.KrrConversion
 {
-    // Simple oscillator generator useful for introducing periodic variation to lengths/values.
-    // Deterministic when provided a seed.
-    public sealed class OscillatorGenerator
+    public class KrrConversionHelper
     {
-        private readonly double frequency;
-        private readonly double phase;
-        private readonly double step;
-        private long counter;
-
-        public OscillatorGenerator(int seed, double frequency = 1.0, double phase = 0.0, double step = 1.0)
+        public static int ComputeSeedFromBeatmap(ManiaBeatmap beatmap)
         {
-            // frequency: cycles per step unit
-            // phase: initial phase in radians
-            // step: increment per Next() call (allow sub-sampling)
-            this.frequency = frequency;
-            this.phase = phase;
-            this.step = step;
-            counter = seed;
+            try
+            {
+                int val = (beatmap.HitObjects.Count) ^ (beatmap.TotalColumns);
+                return Math.Abs(val) + 1;
+            }
+            catch
+            {
+                return 114514;
+            }
         }
 
-        // Returns value in range [-1, 1]
-        public double NextSigned()
+        public static int InferOriginalKeys(ManiaBeatmap beatmap, int fallback)
         {
-            double t = counter * step;
-            counter++;
-            return Math.Sin(2.0 * Math.PI * frequency * t + phase);
+            double cs = beatmap.BeatmapInfo.Difficulty.CircleSize;
+            if (cs > 0)
+                return Math.Max(1, (int)Math.Round(cs));
+
+            if (beatmap.HitObjects.Count > 0)
+                return beatmap.HitObjects.Max(h => h.Column) + 1;
+
+            return fallback;
         }
 
-        // Returns value in range [0, 1]
-        public double Next()
+        public static ManiaHitObject CloneObjectToColumn(ManiaHitObject src, int targetCol)
         {
-            return (NextSigned() + 1.0) * 0.5;
-        }
+            if (src is HoldNote hn)
+            {
+                return new HoldNote
+                {
+                    Column = targetCol,
+                    StartTime = hn.StartTime,
+                    EndTime = hn.EndTime,
+                    Samples = hn.Samples?.ToList()
+                };
+            }
 
-        // Reset internal counter (for deterministic reuse)
-        public void Reset(long start = 0)
-        {
-            counter = start;
+            return new Note
+            {
+                Column = targetCol,
+                StartTime = src.StartTime,
+                Samples = src.Samples
+            };
         }
+    }
+
+    public class KrrOptions
+    {
+        public int TargetKeys { get; set; } = 8;
+        public int MaxKeys { get; set; } = 10;
+        public int MinKeys { get; set; } = 4;
+        public int? Seed { get; set; }
     }
 }

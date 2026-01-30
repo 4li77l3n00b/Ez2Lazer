@@ -1,16 +1,22 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using osu.Framework.Bindables;
 using osu.Framework.Localisation;
+using osu.Framework.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
+using osu.Game.LAsEzExtensions.Mods;
+using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Mania.Beatmaps;
+using osu.Game.Rulesets.Mania.LAsEzMania.Mods;
+using osu.Game.Rulesets.Mania.Mods.KrrConversion;
 using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Rulesets.Mania.Mods.LAsMods
 {
-    public class ManiaModKrrN2Nc : Mod, IApplicableToBeatmapConverter, IApplicableAfterBeatmapConversion
+    public class ManiaModKrrN2Nc : Mod, IApplicableAfterBeatmapConversion, IHasSeed, IHasApplyOrder
     {
         public override string Name => "Krr N2Nc";
 
@@ -47,20 +53,40 @@ namespace osu.Game.Rulesets.Mania.Mods.LAsMods
             MaxValue = 18
         };
 
-        public void ApplyToBeatmapConverter(IBeatmapConverter converter)
-        {
-            var mbc = (ManiaBeatmapConverter)converter;
-            // Set target columns using converter entrypoint (must be done here)
-            mbc.TargetColumns = TargetKeys.Value;
-        }
+        [SettingSource(typeof(EzModStrings), nameof(EzModStrings.Seed_Label), nameof(EzModStrings.Seed_Description), SettingControlType = typeof(SettingsNumberBox))]
+        public Bindable<int?> Seed { get; } = new Bindable<int?>(114514);
+
+        [SettingSource(typeof(EzManiaModStrings), nameof(EzManiaModStrings.ApplyOrder_Label), nameof(EzManiaModStrings.ApplyOrder_Description), SettingControlType = typeof(SettingsNumberBox))]
+        public Bindable<int?> ApplyOrderSetting { get; } = new Bindable<int?>(1000);
 
         public void ApplyToBeatmap(IBeatmap beatmap)
         {
             var maniaBeatmap = (ManiaBeatmap)beatmap;
 
-            // N2NC is a temporary conversion mod; options are not persisted.
-            // Use default behavior for conversion when invoked from code.
-            KrrConverters.N2NCConverter.Transform(maniaBeatmap, null);
+            var options = new KrrOptions
+            {
+                TargetKeys = TargetKeys.Value,
+                MaxKeys    = MaxKeys.Value,
+                MinKeys    = MinKeys.Value,
+                Seed       = Seed.Value
+            };
+
+            // 转换器内部负责：先重建对象，再更新列数
+            KrrN2NcConverter.Transform(maniaBeatmap, options);
+
+            // 最后更新谱面总列数，避免越界
+            try
+            {
+                maniaBeatmap.Stages.Clear();
+                maniaBeatmap.Stages.Add(new StageDefinition(options.TargetKeys));
+                maniaBeatmap.Difficulty.CircleSize = options.TargetKeys;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[ManiaModKrrN2Nc] Failed to update stages: {ex.Message}");
+            }
         }
+
+        public int ApplyOrder => ApplyOrderSetting.Value ?? 1000;
     }
 }
